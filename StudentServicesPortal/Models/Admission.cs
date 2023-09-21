@@ -13,13 +13,6 @@ namespace StudentServicesPortal.Models
 
     }
 
-    public class AttachmentFileModel
-    {
-        public byte[] Data { get; set; }
-    }
-
-
-
     public class AdmissionViewModel : AdmissionModel
     {
         public int Id { get; set; }
@@ -31,7 +24,7 @@ namespace StudentServicesPortal.Models
         public IEnumerable<AttachmentFileViewModel> AttachmentFiles { get; set; }
     }
 
-    public class AttachmentFileViewModel : AttachmentFileModel
+    public class AttachmentFileViewModel
     {
         public int Id { get; set; }
 

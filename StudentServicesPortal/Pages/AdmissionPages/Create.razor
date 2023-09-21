@@ -4,9 +4,12 @@
 <div class="row">
     <div class="col"></div>
 
-    <EditForm Model="_model" OnValidSubmit="@CreateAdmission">
+    <EditForm Model="_model" OnSubmit="OnSubmit">
         <InputText @bind-Value="_model!.Name" id="name" class="form-control"></InputText>
-        <InputFile id="file" multiple class="form-control"></InputFile>
+        <InputText @bind-Value="_model!.Father" id="father" class="form-control"></InputText>
+        <InputText @bind-Value="_model!.Mother" id="mother" class="form-control"></InputText>
+        <InputText @bind-Value="_model!.NationalNumber" id="nationalnumber" class="form-control"></InputText>
+        <InputFile id="file" multiple class="form-control" OnChange="OnInputFileChange"></InputFile>
 
         <button type="submit">Submit</button>
     </EditForm>
@@ -18,32 +21,25 @@
 
     EditContext? context;
     AdmissionModel? _model;
+    Dictionary<string, byte[]> files;
 
     protected override void OnInitialized()
     {
         _model = new();
+        files = new Dictionary<string, byte[]>();
         context = new(_model);
     }
 
-    async void CreateAdmission(EditContext context)
-    {
-        await Caller.PostForm("AdmissionService/Create", _model);
-        await OnPosted.InvokeAsync(true);
-    }
-
-    string Message = "No file(s) selected";
     IReadOnlyList<IBrowserFile> selectedFiles;
 
     private void OnInputFileChange(InputFileChangeEventArgs e)
     {
         selectedFiles = e.GetMultipleFiles();
-        Message = $"{selectedFiles.Count} file(s) selected";
         this.StateHasChanged();
     }
 
     private async void OnSubmit()
     {
-        List<byte[]> filesToUpload = new();
         foreach (var file in selectedFiles)
         {
             using (Stream stream = file.OpenReadStream())
@@ -51,14 +47,15 @@
                 using (MemoryStream ms = new MemoryStream())
                 {
                     await stream.CopyToAsync(ms);
-                    filesToUpload.Add(ms.ToArray());
+                    var fileBytes = ms.ToArray();
+                    var fileName = file.Name;
+                    files.Add(fileName, fileBytes);
                 }
             }
         }
 
-
-
-        Message = $"{selectedFiles.Count} file(s) uploaded on server";
+        await Caller.PostForm("AdmissionService/Create", _model, files);
+        await OnPosted.InvokeAsync(true);
         this.StateHasChanged();
     }
 

@@ -1,5 +1,6 @@
 ﻿@using Microsoft.Extensions.Options;
 @inject IOptionsSnapshot<AppSettings> _settings
+@inject IHttpCaller Caller
 
 <table class="table table-hover table-bordered">
     @foreach (var ad in Admissions)
@@ -16,7 +17,7 @@
                     @foreach (var at in ad.AttachmentFiles)
                     {
                         <tr>
-                            <td> <a href="#">@at.Name</a>  </td>
+                            <td> <a @onclick="@(ev=>TryDownload(at.Id))">@at.Name</a>  </td>
                         </tr>
                     }
                 </table>
@@ -28,6 +29,10 @@
 @code {
     [Parameter]
     public IEnumerable<AdmissionViewModel> Admissions { get; set; } = Enumerable.Empty<AdmissionViewModel>();
-    
-    
+
+    async void TryDownload(int id)
+    {
+        var data = await Caller.Find<string>("AdmissionService/GetAttachment", id);
+        File.WriteAllBytes(Path.GetTempFileName(), Convert.FromBase64String(data));
+    }
 }

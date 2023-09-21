@@ -10,6 +10,7 @@ namespace StudentServicesPortal.Classes
         Task<T> Find<T>(string url, object id) where T : class;
         Task<bool> Post<T>(string url, T model) where T : class;
         Task<bool> PostForm<T>(string url, T model, params string[] files) where T : class;
+        Task<bool> PostForm<T>(string url, T? model, Dictionary<string, byte[]> files) where T : class;
         Task<bool> Put<T>(string url, object id, T model) where T : class;
     }
 
@@ -121,15 +122,14 @@ namespace StudentServicesPortal.Classes
             }
         }
 
-        public async Task<bool> PostForm<T>(string url, T? model, params byte[][] files) where T : class
+        public async Task<bool> PostForm<T>(string url, T? model, Dictionary<string, byte[]> files) where T : class
         {
             var content = new MultipartFormDataContent();
 
             foreach (var file in files)
             {
-                var fileContent = new StreamContent(files[0]);
-                
-                content.Add(fileContent, "file", Path.GetFileName(file));
+                var fileContent = new ByteArrayContent(file.Value);
+                content.Add(fileContent, "file", Path.GetFileName(file.Key));
             }
 
             if (model != null)

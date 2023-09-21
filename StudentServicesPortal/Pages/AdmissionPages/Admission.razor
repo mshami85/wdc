@@ -3,7 +3,7 @@
 
 <div class="row">
     <div class="col">
-        <Create OnPosted="FormPosted"/>
+        <Create OnPosted="FormPosted" />
     </div>
 </div>
 
@@ -20,12 +20,12 @@
     IEnumerable<AdmissionViewModel> Models = Enumerable.Empty<AdmissionViewModel>();
     protected override async Task OnInitializedAsync()
     {
-        Fill();
+        await Fill();
     }
 
-    void FormPosted(object o)
+    async void FormPosted(object o)
     {
-        Fill();
+        await Fill();
     }
 
     async Task Fill()

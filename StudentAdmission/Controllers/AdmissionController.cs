@@ -7,8 +7,11 @@ using StudentAdmission.Classes;
 using StudentAdmission.Data;
 using StudentAdmission.Dtos;
 using StudentAdmission.Models;
+using System.Buffers.Text;
 using System.IO;
 using System.Net.Mail;
+using System.Text;
+using System.Text.Unicode;
 
 namespace StudentAdmission.Controllers
 {
@@ -124,6 +127,23 @@ namespace StudentAdmission.Controllers
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, ex.GetDeepMessage());
             }
+        }
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> GetAttachment(int id)
+        {
+            var att = await _dataContext.Attachments.FindAsync(id);
+
+            if (att == null)
+            {
+                return BadRequest("Not found");
+            }
+            var bytes = System.IO.File.ReadAllBytes(att.Path);
+            if (bytes == null || bytes.Length <= 0)
+            {
+                return NotFound();
+            }
+            return File(bytes, "application/force-download", att.Name); 
         }
     }
 }
