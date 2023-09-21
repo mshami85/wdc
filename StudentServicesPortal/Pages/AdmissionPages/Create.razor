@@ -1,0 +1,66 @@
+﻿@inject IHttpCaller Caller
+
+
+<div class="row">
+    <div class="col"></div>
+
+    <EditForm Model="_model" OnValidSubmit="@CreateAdmission">
+        <InputText @bind-Value="_model!.Name" id="name" class="form-control"></InputText>
+        <InputFile id="file" multiple class="form-control"></InputFile>
+
+        <button type="submit">Submit</button>
+    </EditForm>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<object> OnPosted { get; set; }
+
+    EditContext? context;
+    AdmissionModel? _model;
+
+    protected override void OnInitialized()
+    {
+        _model = new();
+        context = new(_model);
+    }
+
+    async void CreateAdmission(EditContext context)
+    {
+        await Caller.PostForm("AdmissionService/Create", _model);
+        await OnPosted.InvokeAsync(true);
+    }
+
+    string Message = "No file(s) selected";
+    IReadOnlyList<IBrowserFile> selectedFiles;
+
+    private void OnInputFileChange(InputFileChangeEventArgs e)
+    {
+        selectedFiles = e.GetMultipleFiles();
+        Message = $"{selectedFiles.Count} file(s) selected";
+        this.StateHasChanged();
+    }
+
+    private async void OnSubmit()
+    {
+        List<byte[]> filesToUpload = new();
+        foreach (var file in selectedFiles)
+        {
+            using (Stream stream = file.OpenReadStream())
+            {
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    await stream.CopyToAsync(ms);
+                    filesToUpload.Add(ms.ToArray());
+                }
+            }
+        }
+
+
+
+        Message = $"{selectedFiles.Count} file(s) uploaded on server";
+        this.StateHasChanged();
+    }
+
+
+}

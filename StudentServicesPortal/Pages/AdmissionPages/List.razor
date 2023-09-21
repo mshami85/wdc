@@ -1,0 +1,33 @@
+﻿@using Microsoft.Extensions.Options;
+@inject IOptionsSnapshot<AppSettings> _settings
+
+<table class="table table-hover table-bordered">
+    @foreach (var ad in Admissions)
+    {
+        <tr>
+            <td>@ad.Name</td>
+            <td>@ad.Father</td>
+            <td>@ad.Mother</td>
+            <td>@ad.NationalNumber</td>
+            <td>@(ad.Accepted ? "Yes" : "No")</td>
+            <td>@ad.AdmissionDate.ToShortDateString()</td>
+            <td>
+                <table>
+                    @foreach (var at in ad.AttachmentFiles)
+                    {
+                        <tr>
+                            <td> <a href="#">@at.Name</a>  </td>
+                        </tr>
+                    }
+                </table>
+            </td>
+        </tr>
+    }
+</table>
+
+@code {
+    [Parameter]
+    public IEnumerable<AdmissionViewModel> Admissions { get; set; } = Enumerable.Empty<AdmissionViewModel>();
+    
+    
+}
