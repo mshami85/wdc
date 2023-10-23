@@ -1,38 +1,109 @@
 ﻿@using Microsoft.Extensions.Options;
 @inject IOptionsSnapshot<AppSettings> _settings
 @inject IHttpCaller Caller
+@using System.IO
+@inject IJSRuntime JS
 
-<table class="table table-hover table-bordered">
-    @foreach (var ad in Admissions)
-    {
+<div class="mb-3">
+    <table class="table table-hover table-bordered">
         <tr>
-            <td>@ad.Name</td>
-            <td>@ad.Father</td>
-            <td>@ad.Mother</td>
-            <td>@ad.NationalNumber</td>
-            <td>@(ad.Accepted ? "Yes" : "No")</td>
-            <td>@ad.AdmissionDate.ToShortDateString()</td>
-            <td>
-                <table>
-                    @foreach (var at in ad.AttachmentFiles)
-                    {
-                        <tr>
-                            <td> <a @onclick="@(ev=>TryDownload(at.Id))">@at.Name</a>  </td>
-                        </tr>
-                    }
-                </table>
-            </td>
+            <th>الاسم الكامل</th>
+            <th>اسم الأب</th>
+            <th>اسم الأم</th>
+            <th>الرقم الوطني</th>
+            <th>مقبول</th>
+            <th>تاريخ المفاضلة</th>
+            <th>الملفات</th>
         </tr>
-    }
-</table>
+        @foreach (var ad in Admissions)
+        {
+            <tr>
+                <td>@ad.Name</td>
+                <td>@ad.Father</td>
+                <td>@ad.Mother</td>
+                <td>@ad.NationalNumber</td>
+                <td>
+                    @if (ad.Accepted)
+                    {
+                        <span class="badge bg-success">تم القبول</span>
+                    }
+                    else
+                    {
+                        <a class="btn btn-sm btn-outline-danger" @onclick="ev=>DoAccept(ad.Id)">انقر للقبول</a>
+                    }
+                </td>
+                <td>@ad.AdmissionDate.ToShortDateString()</td>
+                <td>
+                    <table>
+                        @foreach (var at in ad.AttachmentFiles)
+                        {
+                            <tr>
+                                <td> <a class="btn btn-sm btn-secondary" @onclick="ev=>TryDownload(at.Id)">@at.Name</a>  </td>
+                            </tr>
+                        }
+                    </table>
+                </td>
+            </tr>
+        }
+    </table>
+</div>
+<ErrorBoundary>
 
+</ErrorBoundary>
 @code {
+    [CascadingParameter(Name = "ErrorComponent")]
+    protected IErrorComponent ErrorComponent { get; set; }
+
     [Parameter]
     public IEnumerable<AdmissionViewModel> Admissions { get; set; } = Enumerable.Empty<AdmissionViewModel>();
 
+    [Parameter]
+    public EventCallback<bool> OnUpdated { get; set; }
+
     async void TryDownload(int id)
     {
-        var data = await Caller.Find<string>("AdmissionService/GetAttachment", id);
-        File.WriteAllBytes(Path.GetTempFileName(), Convert.FromBase64String(data));
+        try
+        {
+            var data = await Caller.Download("AdmissionService/GetAttachment", id);
+
+            // var fileStream = new MemoryStream(data);
+            using var streamRef = new DotNetStreamReference(stream: data.Stream);
+
+            await JS.InvokeVoidAsync("downloadFileFromStream", data.Name, streamRef);
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
     }
+
+    public async void DoAccept(int id)
+    {
+        try
+        {
+            var resp = await Caller.Put<object>("AdmissionService/Accept", id, null);
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
+        this.StateHasChanged();
+        await OnUpdated.InvokeAsync(true);
+    }
+
 }
+
+<script>
+    window.downloadFileFromStream = async (fileName, contentStreamReference) => {
+        const arrayBuffer = await contentStreamReference.arrayBuffer();
+        const blob = new Blob([arrayBuffer]);
+        const url = URL.createObjectURL(blob);
+        const anchorElement = document.createElement('a');
+        anchorElement.href = url;
+        anchorElement.download = fileName ?? '';
+        anchorElement.click();
+        anchorElement.remove();
+        URL.revokeObjectURL(url);
+    }
+</script>
+

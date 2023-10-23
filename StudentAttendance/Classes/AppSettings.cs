@@ -1,4 +1,4 @@
-﻿namespace StudentAdmission.Classes
+﻿namespace StudentAttendance.Classes
 {
     public class AppSettings
     {

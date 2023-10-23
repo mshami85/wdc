@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using StudentAdmission.Classes;
-using StudentAdmission.Data;
+using StudentAttendance.Classes;
+using StudentAttendance.Data;
 
-namespace StudentAdmission
+namespace StudentAttendance
 {
     public class Program
     {
+
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
@@ -19,9 +19,10 @@ namespace StudentAdmission
             builder.Services.Configure<AppSettings>(builder.Configuration);
 
             // Add services to the container.
+            builder.Services.AddAutoMapper(typeof(Program));
             builder.Services.AddControllers();
             builder.Services.AddDbContext<DataContext>(option => option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-            
+
             var app = builder.Build();
 
             //initilize database

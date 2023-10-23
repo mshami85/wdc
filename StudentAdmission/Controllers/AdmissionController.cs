@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -7,11 +6,6 @@ using StudentAdmission.Classes;
 using StudentAdmission.Data;
 using StudentAdmission.Dtos;
 using StudentAdmission.Models;
-using System.Buffers.Text;
-using System.IO;
-using System.Net.Mail;
-using System.Text;
-using System.Text.Unicode;
 
 namespace StudentAdmission.Controllers
 {
@@ -36,7 +30,7 @@ namespace StudentAdmission.Controllers
         {
             try
             {
-                var results = await _dataContext.Admissions.Include(ad => ad.Attachments).ToListAsync();
+                var results = await _dataContext.Admissions.Include(ad => ad.Attachments).OrderByDescending(ad => ad.AdmissionDate).ToListAsync();
                 var viewModels = results.Select(ad => _mapper.Map<AdmissionViewModel>(ad)).ToList();
                 return Ok(viewModels);
             }
@@ -50,13 +44,23 @@ namespace StudentAdmission.Controllers
         [ActionName("Create")]
         //[Consumes("application/json", "application/octet-stream", "multipart/form-data")]
         [RequestFormLimits(MultipartBodyLengthLimit = int.MaxValue, MultipartBoundaryLengthLimit = int.MaxValue)]
-
         public async Task<IActionResult> CreateAsync([FromForm] AdmissionModel model)
         {
-            var files = Request.Form.Files;
-            if (files == null || files.Count == 0 || files.Any(f => f.Length <= 0))
+            string[] acceptedTypes =
             {
-                return BadRequest("Files error");
+                "image/jpeg",
+                "image/bmp",
+                "image/png",
+                "application/msword",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "application/pdf",
+                "text/plain",
+                ""
+            };
+            var files = Request.Form.Files;
+            if ((files == null || files.Count == 0) && model == null)
+            {
+                return BadRequest("No data provided");
             }
 
             var attachmentsList = new List<AttachmentFile>();
@@ -68,18 +72,25 @@ namespace StudentAdmission.Controllers
                     Directory.CreateDirectory(folderPath);
                 }
 
-                foreach (var file in files)
+                if (files != null && files.Count > 0)
                 {
-                    var filePath = Path.Combine(folderPath, Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
-                    using (var fileStream = new FileStream(filePath, FileMode.Create))
+                    //if (files.Any(f => !acceptedTypes.Contains(f.ContentType)))
+                    //{
+                    //    return BadRequest("File types not accepted");
+                    //}
+                    foreach (var file in files)
                     {
-                        await file.CopyToAsync(fileStream);
+                        var filePath = Path.Combine(folderPath, Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
+                        using (var fileStream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(fileStream);
+                        }
+                        attachmentsList.Add(new AttachmentFile
+                        {
+                            Name = Path.GetFileName(file.FileName),
+                            Path = filePath,
+                        });
                     }
-                    attachmentsList.Add(new AttachmentFile
-                    {
-                        Name = Path.GetFileName(file.FileName),
-                        Path = filePath,
-                    });
                 }
 
                 var admission = _mapper.Map<Admission>(model);
@@ -138,12 +149,32 @@ namespace StudentAdmission.Controllers
             {
                 return BadRequest("Not found");
             }
-            var bytes = System.IO.File.ReadAllBytes(att.Path);
-            if (bytes == null || bytes.Length <= 0)
+            var fileInfo = new FileInfo(att.Path);
+            if (!fileInfo.Exists || fileInfo.Length <= 0)
             {
                 return NotFound();
             }
-            return File(bytes, "application/force-download", att.Name); 
+
+            return File(fileInfo.OpenRead(), "application/force-download", att.Name);
+        }
+
+
+        [HttpGet("{id}")]
+        public async Task<IActionResult> IsAccepted([FromRoute] int id)
+        {
+            try
+            {
+                var stdAdmission = await _dataContext.Admissions.FindAsync(id);
+                if (stdAdmission == null)
+                {
+                    return BadRequest("No student admission found");
+                }
+                return Ok(stdAdmission.Accepted);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ex.GetDeepMessage());
+            }
         }
     }
 }

@@ -1,6 +1,4 @@
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using StudentAdmission.Classes;
 using StudentAdmission.Data;
@@ -23,20 +21,8 @@ namespace StudentAdmission
             builder.Services.AddAutoMapper(typeof(Program));
             builder.Services.AddControllers().AddNewtonsoftJson(options => options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
             builder.Services.AddDbContext<DataContext>(option => option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-            builder.Services.Configure<ApiBehaviorOptions>(config =>
-            {
-                //config.InvalidModelStateResponseFactory = context =>
-                //{
-                //    var errorList = context.ModelState.Where(m => m.Value.Errors.Count > 0).Select(m => new
-                //    {
-                //        Field = m.Key,
-                //        Error = string.Join(", ", m.Value.Errors.Select(e => e.ErrorMessage))
-                //    });
-                //    return new BadRequestObjectResult(errorList);
-                //};
 
-                //config.SuppressModelStateInvalidFilter = true;
-            });
+
             var app = builder.Build();
 
             //initilize database

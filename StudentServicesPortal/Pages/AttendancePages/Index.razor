@@ -1,0 +1,43 @@
+﻿@page "/Attendance"
+@inject IHttpCaller Caller
+<div class="row">
+    <div class="col-lg-6">
+        <CreateSession OnPosted="FillData" Courses="_courses" Sessions="_sessions" />
+    </div>
+    <div class="col-lg-6">
+        <AttendSession Courses="_courses" Attended="FillData" />
+    </div>
+</div>
+@code {
+    IEnumerable<CourseViewModel> _courses;
+    IEnumerable<SessionViewModel> _sessions;
+
+    protected override void OnInitialized()
+    {
+        _courses ??= Enumerable.Empty<CourseViewModel>();
+        _sessions ??= Enumerable.Empty<SessionViewModel>();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        FillData();
+    }
+
+    [CascadingParameter(Name = "ErrorComponent")]
+    public IErrorComponent ErrorComponent { get; set; }
+
+    async void FillData()
+    {
+        try
+        {
+            _courses = await Caller.Get<CourseViewModel>("RegisterService/GetCourses");
+            _sessions = await Caller.Get<SessionViewModel>("AttendanceService/GetSessions");
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
+    }
+}

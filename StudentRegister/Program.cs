@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using StudentAdmission.Classes;
-using StudentAdmission.Data;
+using Newtonsoft.Json;
+using StudentRegister.Classes;
+using StudentRegister.Data;
 
-namespace StudentAdmission
+namespace StudentRegister
 {
     public class Program
     {
@@ -15,14 +15,14 @@ namespace StudentAdmission
             builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
                                  .AddJsonFile($"appsettings.{env}.json", true, true);
 
-            //builder.WebHost.UseUrls("http://localhost:5004");
             builder.Services.Configure<AppSettings>(builder.Configuration);
 
             // Add services to the container.
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddControllers();
+            builder.Services.AddAutoMapper(typeof(Program));
+            builder.Services.AddControllers().AddNewtonsoftJson(options => options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore);
             builder.Services.AddDbContext<DataContext>(option => option.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-            
+
+
             var app = builder.Build();
 
             //initilize database

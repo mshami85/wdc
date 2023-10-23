@@ -1,27 +1,49 @@
 ﻿@inject IHttpCaller Caller
 
 
-<div class="row">
-    <div class="col"></div>
+<div class="row row-cols mb-5">
+    <EditForm Model="_model" OnValidSubmit="OnSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        <label>
+            الاسم
+            <InputText @bind-Value="_model!.Name" id="name" class="form-control"></InputText>
+        </label>
+        <label>
+            الأب
+            <InputText @bind-Value="_model!.Father" id="father" class="form-control"></InputText>
+        </label>
+        <label>
+            الأم
+            <InputText @bind-Value="_model!.Mother" id="mother" class="form-control"></InputText>
+        </label>
+        <label>
+            الرقم الوطني
+            <InputText @bind-Value="_model!.NationalNumber" id="nationalnumber" class="form-control"></InputText>
+        </label>
+        <label>
+            ملفات أخرى
+            <InputFile id="file" multiple class="form-control" OnChange="OnInputFileChange" accept=".jpg,.bmp,.png,.doc,.docx,.pdf"></InputFile>
+        </label>
+        <label>
+            <button class="btn btn-primary" type="submit">حفظ</button>
+        </label>
 
-    <EditForm Model="_model" OnSubmit="OnSubmit">
-        <InputText @bind-Value="_model!.Name" id="name" class="form-control"></InputText>
-        <InputText @bind-Value="_model!.Father" id="father" class="form-control"></InputText>
-        <InputText @bind-Value="_model!.Mother" id="mother" class="form-control"></InputText>
-        <InputText @bind-Value="_model!.NationalNumber" id="nationalnumber" class="form-control"></InputText>
-        <InputFile id="file" multiple class="form-control" OnChange="OnInputFileChange"></InputFile>
-
-        <button type="submit">Submit</button>
     </EditForm>
 </div>
+
 
 @code {
     [Parameter]
     public EventCallback<object> OnPosted { get; set; }
 
+    [CascadingParameter(Name = "ErrorComponent")]
+    protected IErrorComponent ErrorComponent { get; set; }
+
     EditContext? context;
     AdmissionModel? _model;
-    Dictionary<string, byte[]> files;
+    Dictionary<string, byte[]>? files;
+    IReadOnlyList<IBrowserFile>? selectedFiles;
 
     protected override void OnInitialized()
     {
@@ -30,7 +52,6 @@
         context = new(_model);
     }
 
-    IReadOnlyList<IBrowserFile> selectedFiles;
 
     private void OnInputFileChange(InputFileChangeEventArgs e)
     {
@@ -38,25 +59,36 @@
         this.StateHasChanged();
     }
 
-    private async void OnSubmit()
+    private async void OnSubmit(EditContext ec)
     {
-        foreach (var file in selectedFiles)
+        if (selectedFiles != null && selectedFiles.Count > 0)
         {
-            using (Stream stream = file.OpenReadStream())
+            foreach (var file in selectedFiles)
             {
-                using (MemoryStream ms = new MemoryStream())
+                using (Stream stream = file.OpenReadStream(512000000))
                 {
-                    await stream.CopyToAsync(ms);
-                    var fileBytes = ms.ToArray();
-                    var fileName = file.Name;
-                    files.Add(fileName, fileBytes);
+                    using (MemoryStream ms = new MemoryStream())
+                    {
+                        await stream.CopyToAsync(ms);
+                        var fileBytes = ms.ToArray();
+                        var fileName = file.Name;
+                        files?.Add(fileName, fileBytes);
+                    }
                 }
             }
         }
 
-        await Caller.PostForm("AdmissionService/Create", _model, files);
-        await OnPosted.InvokeAsync(true);
-        this.StateHasChanged();
+        try
+        {
+            await Caller.PostForm("AdmissionService/Create", _model, files);
+            await OnPosted.InvokeAsync(true);
+            this.StateHasChanged();
+            _model = new();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
     }
 
 

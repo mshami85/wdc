@@ -1,0 +1,17 @@
+﻿@page "/Register"
+@inject IHttpCaller Caller
+
+@using StudentServicesPortal.Models
+<div class="row">
+    <div class="col-lg-6">
+        <Materials></Materials>
+    </div>
+    <div class="col-lg-6">
+        <Create></Create>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "ErrorComponent")]
+    protected IErrorComponent ErrorComponent { get; set; }
+}

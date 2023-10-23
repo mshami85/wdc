@@ -1,0 +1,128 @@
+﻿@inject IHttpCaller Caller
+
+@using StudentServicesPortal.Models
+<div class="card mb-3">
+    <div class="card-header">
+        إنشاء مقرر
+    </div>
+    <div class="card-body">
+        <EditForm Model="_course" OnValidSubmit="CreateCourse">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <label>
+                اسم المادة
+                <InputText class="form-control" @bind-Value="_course.Name" id="cName"></InputText>
+            </label>
+            <label>
+                المدرس
+                <InputText class="form-control" @bind-Value="_course.Teacher" id="cTeacher"></InputText>
+            </label>
+            <label>
+                وصف المقرر
+                <InputText class="form-control" @bind-Value="_course.Description" id="cDesc"></InputText>
+            </label>
+            <button class="btn btn-primary" type="submit">إنشاء مادة</button>
+        </EditForm>
+    </div>
+</div>
+<div class="card mb-3">
+    <div class="card-header">
+        المقررات
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <tr>
+                <th>اسم المقرر</th>
+                <th>المدرس</th>
+                <th>الوصف</th>
+            </tr>
+            @foreach (var course in _courses)
+            {
+                <tr>
+                    <td>@course.Name</td>
+                    <td>@course.Teacher</td>
+                    <td><a class="btn btn-sm btn-success bg-success" @onclick="ev=>ShowDetails(course.Id)">تفاصيل</a></td>
+                </tr>
+            }
+        </table>
+        <div class="card-footer">
+            @if (_showCourse != null)
+            {
+
+                <div class="fw-bold">المادة: @_showCourse.Name</div>
+                <div class="fst-italic">@_showCourse.Description</div>
+                <hr />
+                <div class="fw-bold">الطلاب:</div>
+                foreach (var registered in _showCourse.Registerations)
+                {
+                    <div class="bg-secondary bg-opacity-50">@registered.StudentName</div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "ErrorComponent")]
+    public IErrorComponent? ErrorComponent { get; set; }
+
+    public IEnumerable<CourseViewModel> _courses;
+
+    CourseModel _course;
+    CourseViewModel _showCourse;
+
+    protected override void OnInitialized()
+    {
+        _courses = new List<CourseViewModel>();
+        _course = new CourseModel();
+        base.OnInitialized();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await FillData();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent?.ShowError(ex.Source, ex.Message);
+        }
+    }
+
+    async Task FillData()
+    {
+        _courses = await Caller.Get<CourseViewModel>("RegisterService/GetCourses");
+    }
+
+    async void ShowDetails(int id)
+    {
+        try
+        {
+            _showCourse = await Caller.Find<CourseViewModel>("RegisterService/GetCourse", id);
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent?.ShowError(ex.Source, ex.Message);
+        }
+    }
+
+    public async void CreateCourse()
+    {
+        try
+        {
+            var created = await Caller.Post("RegisterService/CreateCourse", _course);
+            if (created)
+            {
+                await FillData();
+                _course = new CourseModel();
+            }
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent?.ShowError(ex.Source, ex.Message);
+        }
+    }
+}

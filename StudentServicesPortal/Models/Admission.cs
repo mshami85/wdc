@@ -1,8 +1,11 @@
 ﻿
+using System.ComponentModel.DataAnnotations;
+
 namespace StudentServicesPortal.Models
 {
     public class AdmissionModel
     {
+        [Required(ErrorMessage = "الحقل مطلوب")]
         public string Name { get; set; }
 
         public string? Father { get; set; }

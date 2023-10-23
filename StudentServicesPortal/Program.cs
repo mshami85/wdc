@@ -1,7 +1,4 @@
-using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using StudentServicesPortal.Classes;
-using StudentServicesPortal.Data;
 
 namespace StudentServicesPortal
 {
@@ -18,8 +15,7 @@ namespace StudentServicesPortal
             //builder.Services.AddScoped<AppSettings>();
             builder.Services.AddRazorPages();
             builder.Services.AddServerSideBlazor();
-            builder.Services.AddSingleton<WeatherForecastService>();
-            builder.Services.AddScoped<IHttpCaller,HttpCaller>();
+            builder.Services.AddScoped<IHttpCaller, HttpCaller>();
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.

@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using StudentAttendance.Models;
 
-namespace StudentAdmission.Data
+namespace StudentAttendance.Data
 {
     public class DataContext : DbContext
     {
@@ -9,5 +10,7 @@ namespace StudentAdmission.Data
 
         }
 
+        public DbSet<Session> Sessions { get; set; }
+        public DbSet<Attendance> Attendances { get; set; }
     }
 }

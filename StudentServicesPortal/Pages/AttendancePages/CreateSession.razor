@@ -1,0 +1,136 @@
+﻿@inject IHttpCaller Caller
+
+<div class="card mb-3   ">
+    <div class="card-header">
+        إنشاء جلسة
+    </div>
+    <div class="card-body">
+        <EditForm Model="_model" OnValidSubmit="SaveSession" class="row">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <label class="form-label col-lg-3">
+                المادة
+                <select class="form-select" @bind="SelectedCourse">
+                    <option value="">-</option>
+                    @foreach (var item in Courses)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            </label>
+            <label class="form-label col-lg-3">
+                عنوان الجلسة
+                <InputText class="form-control" @bind-Value="_model.Title"></InputText>
+            </label>
+            <lablel class="form-label col-lg-4">
+                تاريخ الجلسة
+                <InputDate class="form-control col-lg-4" @bind-Value="_model.SessionDate"></InputDate>
+            </lablel>
+            <input type="hidden" value="@_model.CourseName" />
+            <label class="col-lg-3">
+                <button type="submit" class="btn btn-primary ">إنشاء الجلسة</button>
+            </label>
+        </EditForm>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">
+        الجلسات
+    </div>
+    <div class="card-body">
+        <table class="table">
+            <tr>
+                <th>اسم المقرر</th>
+                <th>عنوان الجلسة</th>
+                <th>تاريخها</th>
+                <th>عدد الحضور</th>
+            </tr>
+
+            @foreach (var item in Sessions)
+            {
+                <tr class="">
+                    <td>@item.CourseName</td>
+                    <td>@item.Title</td>
+                    <td>@item.SessionDate?.ToShortDateString()</td>
+                    <td>@item.Attendances.Count()</td>
+                    <td><a class="btn btn-sm btn-info bg-info" @onclick="ev=>ShowSessionDetails(item.Id)">تفاصيل</a></td>
+                </tr>
+            }
+        </table>
+    </div>
+    <div class="card-footer">
+        @if (_selectedSession != null)
+        {
+            <div class="fw-bold">معلومات الجلسة: @_selectedSession.Title - @_selectedSession.CourseName</div>
+            <div class="fw-bold">تاريخ الجلسة: @_selectedSession.SessionDate?.ToShortDateString()</div>
+            <div class="fw-bold">الحضور</div>
+            @foreach (var item in _selectedSession.Attendances)
+            {
+                <div class="link-danger">@item.StudentName</div>
+            }
+        }
+    </div>
+</div>
+
+
+@code {
+
+    [Parameter]
+    public EventCallback<object> OnPosted { get; set; }
+
+    [CascadingParameter(Name = "ErrorComponent")]
+    public IErrorComponent ErrorComponent { get; set; }
+
+    [Parameter]
+    public IEnumerable<SessionViewModel> Sessions { get; set; }
+
+    [Parameter]
+    public IEnumerable<CourseViewModel> Courses { get; set; }
+
+    SessionViewModel _selectedSession;
+    SessionModel _model;
+    int SelectedCourse
+    {
+        get { return _model.CourseId; }
+        set { _model.CourseId = value; _model.CourseName = Courses.FirstOrDefault(c => c.Id == value)?.Name; }
+    }
+
+    protected override void OnInitialized()
+    {
+        Sessions ??= new List<SessionViewModel>();
+        Courses ??= new List<CourseViewModel>();
+        _model = new SessionModel();
+        base.OnInitialized();
+    }
+
+    async void ShowSessionDetails(int id)
+    {
+        try
+        {
+            _selectedSession = await Caller.Find<SessionViewModel>("AttendanceService/GetSession", id);
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
+    }
+
+    async void SaveSession(EditContext context)
+    {
+        try
+        {
+            var posted = await Caller.Post("AttendanceService/CreateSession", _model);
+            _model = new SessionModel();
+            if (posted)
+            {
+                await OnPosted.InvokeAsync();
+                this.StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
+    }
+}

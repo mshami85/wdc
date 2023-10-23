@@ -1,0 +1,132 @@
+﻿@inject IHttpCaller Caller
+
+<div class="card">
+    <div class="card-header">
+        <label class="form-label">اختيار المادة والحصة</label>
+        <select @onchange="CourseChanged" class="col-auto form-select">
+            <option value="">---</option>
+            @foreach (var item in Courses)
+            {
+                <option value="@item.Id">@item.Name</option>
+            }
+        </select>
+        <select @onchange="SessionChanged" class="col-auto form-select">
+            <option value="">---</option>
+            @foreach (var item in _sessions)
+            {
+                <option value="@item.Id">@item.Title - @item.SessionDate?.ToShortDateString()</option>
+            }
+        </select>
+        <table class="table table-hover">
+            <tr>
+                <th>اسم الطالب</th>
+                <th></th>
+            </tr>
+            @if (_registeredStudents != null)
+            {
+                foreach (var item in _registeredStudents)
+                {
+                    <tr>
+                        <td> @item.StudentName</td>
+                        <td>
+                            @if (_selectedSession != null && _selectedSession.Attendances.Any(a => a.AdmissionId == item.AdmissionId))
+                            {
+                                <span class="badge bg-success">حاضر</span>
+                            }
+                            else
+                            {
+                                var cls = _selectedSession != null ? "" : "disabled";
+                                <a class="btn btn-sm btn-info bg-info @cls" @onclick="ev=>Attend(item.AdmissionId,item.StudentName)">تسجيل الحضور</a>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+        </table>
+    </div>
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback Attended { get; set; }
+
+    [CascadingParameter(Name = "ErrorComponent")]
+    public IErrorComponent ErrorComponent { get; set; }
+
+    [Parameter]
+    public IEnumerable<CourseViewModel> Courses { get; set; }
+
+    IEnumerable<SessionViewModel> _sessions;
+    IEnumerable<RegisterViewModel> _registeredStudents;
+
+    protected override void OnInitialized()
+    {
+        Courses ??= Enumerable.Empty<CourseViewModel>();
+        _sessions ??= Enumerable.Empty<SessionViewModel>();
+
+        base.OnInitialized();
+    }
+
+    async void CourseChanged(ChangeEventArgs args)
+    {
+        _sessions = Enumerable.Empty<SessionViewModel>();
+        _selectedSession = null;
+        this.StateHasChanged();
+
+        var val = args.Value;
+        if (val == null || val.ToString() == string.Empty)
+        {
+            _sessions = Enumerable.Empty<SessionViewModel>();
+            _registeredStudents = null;
+            _selectedSession = null;
+            return;
+        }
+        try
+        {
+            var id = int.Parse(val.ToString());
+            _sessions = await Caller.Get<SessionViewModel>("AttendanceService/GetCourseSessions", id);
+            _registeredStudents = Courses.FirstOrDefault(c => c.Id == id).Registerations;
+
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
+    }
+
+
+    SessionViewModel _selectedSession;
+    async void SessionChanged(ChangeEventArgs args)
+    {
+        var val = args.Value;
+        if (val == null || val.ToString() == string.Empty)
+        {
+            _selectedSession = null;
+            return;
+        }
+        var id = int.Parse(val.ToString());
+        _selectedSession = await Caller.Find<SessionViewModel>("AttendanceService/GetSession", id);
+        this.StateHasChanged();
+    }
+
+    async void Attend(int std_id, string std_name)
+    {
+        try
+        {
+            var model = new AttendanceModel
+                {
+                    AdmissionId = std_id,
+                    StudentName = std_name
+                };
+            var done = await Caller.Put("AttendanceService/AttendSession", _selectedSession.Id, model);
+            _selectedSession = await Caller.Find<SessionViewModel>("AttendanceService/GetSession", _selectedSession.Id);
+            Attended.InvokeAsync();
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent.ShowError(ex.Source, ex.Message);
+        }
+    }
+}

@@ -3,7 +3,7 @@
 
 <div class="row">
     <div class="col">
-        <Create OnPosted="FormPosted" />
+        <Create OnPosted="Fill" />
     </div>
 </div>
 
@@ -11,25 +11,32 @@
 {
     <div class="row">
         <div class="col">
-            <List Admissions="Models" />
+            <List Admissions="Models" OnUpdated="Fill" />
         </div>
     </div>
 }
 
 @code {
     IEnumerable<AdmissionViewModel> Models = Enumerable.Empty<AdmissionViewModel>();
-    protected override async Task OnInitializedAsync()
-    {
-        await Fill();
-    }
 
-    async void FormPosted(object o)
+    [CascadingParameter(Name = "ErrorComponent")]
+    public IErrorComponent? ErrorComponent { get; set; }
+
+    protected override async Task OnInitializedAsync()
     {
         await Fill();
     }
 
     async Task Fill()
     {
-        Models = await Caller.Get<AdmissionViewModel>("AdmissionService/List");
+        try
+        {
+            Models = await Caller.Get<AdmissionViewModel>("AdmissionService/List");
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent?.ShowError("Admissio Service Error", ex.Message);
+        }
     }
 }

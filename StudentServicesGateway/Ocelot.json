@@ -16,7 +16,7 @@
         }
       ],
       "UpstreamPathTemplate": "/apigateway/AdmissionService/{everything}",
-      "UpstreamHttpMethod": [ "GET", "PUT", "POST" ]
+      "UpstreamHttpMethod": [ "GET", "PUT", "POST", "DELETE" ]
     },
 
     //Attendance Part
@@ -30,7 +30,7 @@
         }
       ],
       "UpstreamPathTemplate": "/apigateway/AttendanceService/{everything}",
-      "UpstreamHttpMethod": [ "GET", "PUT", "POST" ],
+      "UpstreamHttpMethod": [ "GET", "PUT", "POST", "DELETE" ],
     },
 
     //Register Part
@@ -44,7 +44,7 @@
         }
       ],
       "UpstreamPathTemplate": "/apigateway/RegisterService/{everything}",
-      "UpstreamHttpMethod": [ "GET", "PUT", "POST" ]
+      "UpstreamHttpMethod": [ "GET", "PUT", "POST", "DELETE" ]
     }
   ]
 }

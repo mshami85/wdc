@@ -1,0 +1,117 @@
+﻿@inject IHttpCaller Caller
+
+<div class="card mb-3">
+    <div class="card-header">التسجيل</div>
+    <div class="card-body">
+        <EditForm Model="_model" OnValidSubmit="Save">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+            <label class="form-label">
+                المادة
+                <InputSelect @bind-Value="_model.CourseId" class="form-select col-lg-6">
+                    <option value="">-</option>
+                    @foreach (var item in _courses)
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </InputSelect>
+            </label>
+            <label class="form-label mt-3">
+                الطالب
+
+                <select @bind="@SelectedStudent" class="form-select col-lg-6">
+                    <option value="">-</option>
+                    @foreach (var item in _admissions.Where(ad => ad.Accepted))
+                    {
+                        <option value="@item.Id">@item.Name</option>
+                    }
+                </select>
+            </label>
+            <input type="hidden" @bind="_model.StudentName" />
+            <button type="submit" class="btn btn-primary">تسجيل</button>
+        </EditForm>
+        <hr class="mb-5" />
+
+        <table class="table">
+            <tr>
+                <th>الطالب</th>
+                <th>المادة</th>
+                <th>تاريخ التسجيل</th>
+            </tr>
+            @foreach (var item in _registerations)
+            {
+                <tr>
+                    <td>@item.StudentName</td>
+                    <td>@item.CourseName</td>
+                    <td>@item.RegisterationDate</td>
+                </tr>
+            }
+        </table>
+
+    </div>
+</div>
+
+@code {
+    [CascadingParameter(Name = "ErrorComponent")]
+    public IErrorComponent? ErrorComponent { get; set; }
+
+    public int SelectedStudent
+    {
+        get { return _model.AdmissionId; }
+        set { _model.AdmissionId = value; _model.StudentName = _admissions.SingleOrDefault(a => a.Id == _model.AdmissionId)?.Name; }
+    }
+
+    IEnumerable<CourseViewModel> _courses;
+    IEnumerable<AdmissionViewModel> _admissions;
+    IEnumerable<RegisterViewModel> _registerations;
+
+    RegisterModel _model;
+
+    protected override void OnInitialized()
+    {
+        _model = new RegisterModel();
+        _admissions = Enumerable.Empty<AdmissionViewModel>();
+        _courses = Enumerable.Empty<CourseViewModel>();
+        _registerations = Enumerable.Empty<RegisterViewModel>();
+        base.OnInitialized();
+    }
+    async Task LoadData()
+    {
+        _admissions = await Caller.Get<AdmissionViewModel>("AdmissionService/List");
+        _courses = await Caller.Get<CourseViewModel>("RegisterService/GetCourses");
+        _registerations = await Caller.Get<RegisterViewModel>("RegisterService/GetRegisterations");
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await LoadData();
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent!.ShowError(ex.Source, ex.Message);
+        }
+    }
+
+    async void Save(EditContext context)
+    {
+        try
+        {
+            // _model.AdmissionId = Convert.ToInt32(selectedStudent);
+            // _model.StudentName = _admissions.SingleOrDefault(a => a.Id == _model.AdmissionId)?.Name;
+
+            var regDone = await Caller.Post("RegisterService/Register", _model);
+            if (regDone)
+            {
+                await LoadData();
+            }
+
+            this.StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ErrorComponent!.ShowError(ex.Source, ex.Message);
+        }
+    }
+}

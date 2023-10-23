@@ -11,7 +11,8 @@ namespace StudentServicesPortal.Classes
         Task<bool> Post<T>(string url, T model) where T : class;
         Task<bool> PostForm<T>(string url, T model, params string[] files) where T : class;
         Task<bool> PostForm<T>(string url, T? model, Dictionary<string, byte[]> files) where T : class;
-        Task<bool> Put<T>(string url, object id, T model) where T : class;
+        Task<bool> Put<T>(string url, object id, T? model) where T : class;
+        Task<(string Name, Stream Stream)> Download(string url, object id);
     }
 
     public class HttpCallerException : Exception
@@ -23,7 +24,7 @@ namespace StudentServicesPortal.Classes
             Code = code;
         }
 
-        public override string ToString() => $"Error Code: {Code}\n\rMessage: {Message}";
+        public override string ToString() => $"Error Code: {Code}{Environment.NewLine}Message: {Message}";
     }
 
     public class HttpCaller : IHttpCaller
@@ -44,6 +45,7 @@ namespace StudentServicesPortal.Classes
 
         public async Task<bool> Post<T>(string url, T model) where T : class
         {
+            url = url.TrimEnd('/') + '/';
             var response = await _client.PostAsJsonAsync(url, model);
             if (response.IsSuccessStatusCode)
             {
@@ -55,9 +57,9 @@ namespace StudentServicesPortal.Classes
             }
         }
 
-        public async Task<bool> Put<T>(string url, object id, T model) where T : class
+        public async Task<bool> Put<T>(string url, object id, T? model) where T : class
         {
-            var path = id == null ? url : url + "/" + id;
+            var path = url.TrimEnd('/') + "/" + id ?? "";
             var response = await _client.PutAsJsonAsync(path, model);
             if (response.IsSuccessStatusCode)
             {
@@ -71,7 +73,7 @@ namespace StudentServicesPortal.Classes
 
         public async Task<bool> Delete(string url, object id)
         {
-            var path = id == null ? url : url + "/" + id;
+            var path = url.TrimEnd('/') + "/" + id ?? "";
             var response = await _client.DeleteAsync(path);
             if (response.IsSuccessStatusCode)
             {
@@ -116,15 +118,14 @@ namespace StudentServicesPortal.Classes
             }
             else
             {
-                var error = response.StatusCode;
-                var msg = await response.Content.ReadAsStringAsync();
-                throw new HttpCallerException((int)error, msg);
+                throw new HttpCallerException((int)response.StatusCode, await response.Content.ReadAsStringAsync());
             }
         }
 
         public async Task<bool> PostForm<T>(string url, T? model, Dictionary<string, byte[]> files) where T : class
         {
             var content = new MultipartFormDataContent();
+            url = url.TrimEnd('/') + '/';
 
             foreach (var file in files)
             {
@@ -155,15 +156,13 @@ namespace StudentServicesPortal.Classes
             }
             else
             {
-                var error = response.StatusCode;
-                var msg = await response.Content.ReadAsStringAsync();
-                throw new HttpCallerException((int)error, msg);
+                throw new HttpCallerException((int)response.StatusCode, await response.Content.ReadAsStringAsync());
             }
         }
 
         public async Task<IEnumerable<T>> Get<T>(string url, object? id = null) where T : class
         {
-            var path = id == null ? url : url + "/" + id;
+            var path = url.TrimEnd('/') + "/" + id ?? "";
             var response = await _client.GetAsync(path);
             if (response.IsSuccessStatusCode)
             {
@@ -182,6 +181,22 @@ namespace StudentServicesPortal.Classes
             if (response.IsSuccessStatusCode)
             {
                 return await response.Content.ReadFromJsonAsync<T>();
+            }
+            else
+            {
+                throw new HttpCallerException((int)response.StatusCode, await response.Content.ReadAsStringAsync());
+            }
+        }
+
+        public async Task<(string, Stream)> Download(string url, object id)
+        {
+            var path = url.TrimEnd('/') + "/" + id;
+            var response = await _client.GetAsync(path);
+            if (response.IsSuccessStatusCode)
+            {
+                var file = await response.Content.ReadAsStreamAsync();
+                var fileName = response.Content.Headers.ContentDisposition?.FileName ?? "";
+                return (fileName, file);
             }
             else
             {
